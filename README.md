@@ -1,3 +1,4 @@
+![CAPA](img\payments.png)
 # payment-resilience-lab
 
 Projeto de estudo em Go puro (sem dependências externas) que simula um

@@ -31,20 +31,19 @@ func (e Estado) String() string {
 var ErrCircuitoAberto = errors.New("circuit breaker aberto: chamada bloqueada")
 
 type CircuitBreakerConfig struct {
-	LimiteFalhas     int           // falhas consecutivas até abrir
-	Cooldown         time.Duration // tempo em OPEN antes de tentar HALF-OPEN
-	SucessosParaFechar int         // sucessos consecutivos em HALF-OPEN até fechar de novo
-	OnMudancaEstado  func(de, para Estado)
+	LimiteFalhas       int           // falhas consecutivas até abrir
+	Cooldown           time.Duration // tempo em OPEN antes de tentar HALF-OPEN
+	SucessosParaFechar int           // sucessos consecutivos em HALF-OPEN até fechar de novo
+	OnMudancaEstado    func(de, para Estado)
 }
 
 type CircuitBreaker struct {
 	cfg CircuitBreakerConfig
-
-	mu                sync.Mutex
-	estado            Estado
+	mu                 sync.Mutex //proteje o balanceamento de estado e contadores
+	estado             Estado
 	falhasConsecutivas int
-	sucessosHalfOpen  int
-	abertoDesde       time.Time
+	sucessosHalfOpen   int
+	abertoDesde        time.Time
 }
 
 func NewCircuitBreaker(cfg CircuitBreakerConfig) *CircuitBreaker {
@@ -55,8 +54,8 @@ func NewCircuitBreaker(cfg CircuitBreakerConfig) *CircuitBreaker {
 }
 
 func (cb *CircuitBreaker) Estado() Estado {
-	cb.mu.Lock()
-	defer cb.mu.Unlock()
+	cb.mu.Lock()         //lock para leituras
+	defer cb.mu.Unlock() // adia a chamada a unlock
 	return cb.estado
 }
 
@@ -73,8 +72,8 @@ func (cb *CircuitBreaker) Executar(ctx context.Context, op func(ctx context.Cont
 }
 
 func (cb *CircuitBreaker) podeExecutar() bool {
-	cb.mu.Lock()
-	defer cb.mu.Unlock()
+	cb.mu.Lock()         //lock para leituras
+	defer cb.mu.Unlock() // adia a chamada a unlock
 
 	switch cb.estado {
 	case Open:
@@ -89,8 +88,8 @@ func (cb *CircuitBreaker) podeExecutar() bool {
 }
 
 func (cb *CircuitBreaker) registrarResultado(err error) {
-	cb.mu.Lock()
-	defer cb.mu.Unlock()
+	cb.mu.Lock()         //lock para leituras
+	defer cb.mu.Unlock() // adia a chamada a unlock
 
 	if err != nil {
 		cb.falhasConsecutivas++

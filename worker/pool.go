@@ -53,7 +53,7 @@ func (p *Pool) Processar(ctx context.Context, pagamentos []gateway.Pagamento) <-
 		}
 	}()
 
-	// fecha results assim que todos os workers terminarem
+	// fecha canal de resultados quando todos os workers terminarem
 	go func() {
 		wg.Wait()
 		close(results)
