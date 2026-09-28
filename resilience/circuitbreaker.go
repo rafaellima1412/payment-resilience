@@ -38,8 +38,8 @@ type CircuitBreakerConfig struct {
 }
 
 type CircuitBreaker struct {
-	cfg CircuitBreakerConfig
-	mu                 sync.Mutex //proteje o balanceamento de estado e contadores
+	cfg                CircuitBreakerConfig
+	mu                 sync.Mutex // mutex para proteger o estado do circuito
 	estado             Estado
 	falhasConsecutivas int
 	sucessosHalfOpen   int
@@ -50,7 +50,7 @@ func NewCircuitBreaker(cfg CircuitBreakerConfig) *CircuitBreaker {
 	if cfg.SucessosParaFechar == 0 {
 		cfg.SucessosParaFechar = 2
 	}
-	return &CircuitBreaker{cfg: cfg, estado: Closed}
+	return &CircuitBreaker{cfg: cfg, estado: Closed} //Closed é o estado inicial do circuito
 }
 
 func (cb *CircuitBreaker) Estado() Estado {
@@ -78,7 +78,7 @@ func (cb *CircuitBreaker) podeExecutar() bool {
 	switch cb.estado {
 	case Open:
 		if time.Since(cb.abertoDesde) >= cb.cfg.Cooldown {
-			cb.transicionar(HalfOpen)
+			cb.transicionar(HalfOpen) // estado do circuito muda para HALF-OPEN
 			return true
 		}
 		return false
@@ -87,10 +87,9 @@ func (cb *CircuitBreaker) podeExecutar() bool {
 	}
 }
 
-func (cb *CircuitBreaker) registrarResultado(err error) {
+func (cb *CircuitBreaker) registrarResultado(err error) { //defer deveria ser usado em uma função menor, mas como é uma função pequena, não há problema em não usar
 	cb.mu.Lock()         //lock para leituras
 	defer cb.mu.Unlock() // adia a chamada a unlock
-
 	if err != nil {
 		cb.falhasConsecutivas++
 		cb.sucessosHalfOpen = 0
@@ -98,12 +97,12 @@ func (cb *CircuitBreaker) registrarResultado(err error) {
 		if cb.estado == HalfOpen {
 			// falhou testando recuperação -> volta pra OPEN imediatamente
 			cb.abertoDesde = time.Now()
-			cb.transicionar(Open)
+			cb.transicionar(Open) // estado do circuito muda para OPEN
 			return
 		}
 		if cb.falhasConsecutivas >= cb.cfg.LimiteFalhas {
 			cb.abertoDesde = time.Now()
-			cb.transicionar(Open)
+			cb.transicionar(Open) // estado do circuito muda para OPEN
 		}
 		return
 	}
@@ -112,9 +111,9 @@ func (cb *CircuitBreaker) registrarResultado(err error) {
 	cb.falhasConsecutivas = 0
 	if cb.estado == HalfOpen {
 		cb.sucessosHalfOpen++
-		if cb.sucessosHalfOpen >= cb.cfg.SucessosParaFechar {
+		if cb.sucessosHalfOpen >= cb.cfg.SucessosParaFechar { //o que nescessita para fechar o circuito
 			cb.sucessosHalfOpen = 0
-			cb.transicionar(Closed)
+			cb.transicionar(Closed) // estado do circuito muda para CLOSED
 		}
 	}
 }

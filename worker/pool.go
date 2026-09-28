@@ -31,49 +31,48 @@ type Pool struct {
 // Processar recebe todos os pagamentos, distribui entre N workers via um
 // channel de entrada, e devolve um channel de resultados. Encerra tudo
 // corretamente quando o ctx pai é cancelado (ex: deadline global do batch).
-func (p *Pool) Processar(ctx context.Context, pagamentos []gateway.Pagamento) <-chan ResultadoProcessamento {
-	jobs := make(chan gateway.Pagamento)
-	results := make(chan ResultadoProcessamento, len(pagamentos))
+func (p *Pool) Processar(ctx context.Context, pagamentos []gateway.Pagamento) <-chan ResultadoProcessamento { //canal de entrada de jobs (pagamentos)
+	jobs := make(chan gateway.Pagamento)                          // canal de entrada de jobs (pagamentos)
+	results := make(chan ResultadoProcessamento, len(pagamentos)) // canal bufferizado de resultados, usado para coletar os resultados do processamento dos pagamentos
 
 	var wg sync.WaitGroup
 	for i := 0; i < p.NumWorkers; i++ {
-		wg.Add(1)
-		go p.worker(ctx, i, jobs, results, &wg)
+		wg.Add(1)                               //incrementa o contador do WaitGroup para cada worker
+		go p.worker(ctx, i, jobs, results, &wg) // agendamento de N workers (goroutines) que processam os pagamentos
 	}
 
 	// goroutine produtora: alimenta o channel de jobs
 	go func() {
-		defer close(jobs)
+		defer close(jobs) //fecha o canal de jobs quando todos os pagamentos forem enviados
 		for _, pag := range pagamentos {
 			select {
-			case jobs <- pag:
+			case jobs <- pag: //envia o pagamento para o channel de jobs
 			case <-ctx.Done():
 				return
 			}
 		}
 	}()
 
-	// fecha canal de resultados quando todos os workers terminarem
+	// fechadora canal de resultados quando todos os workers terminarem
 	go func() {
-		wg.Wait()
-		close(results)
+		wg.Wait()      //espera todos os workers terminarem
+		close(results) //fecha o canal de resultados
 	}()
 
 	return results
 }
 
 func (p *Pool) worker(ctx context.Context, _ int, jobs <-chan gateway.Pagamento, results chan<- ResultadoProcessamento, wg *sync.WaitGroup) {
-	defer wg.Done()
-
+	defer wg.Done() //garante que o WaitGroup seja decrementado quando o worker terminar
 	for {
 		select {
-		case <-ctx.Done():
+		case <-ctx.Done(): //se o contexto for cancelado, encerra o worker
 			return
-		case pag, ok := <-jobs:
+		case pag, ok := <-jobs: //recebe um pagamento do channel de jobs
 			if !ok {
 				return
 			}
-			results <- p.processarUm(ctx, pag)
+			results <- p.processarUm(ctx, pag) //envia o resultado para o channel de resultados
 		}
 	}
 }

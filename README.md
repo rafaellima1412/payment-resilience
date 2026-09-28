@@ -1,6 +1,23 @@
 ![CAPA](img\payments.png)
 # payment-resilience-lab
 
+┌─────────────────────────────────────────────┐
+│ A) CONTROLE DE VIDA DAS GOROUTINES          │
+│  (garante que tudo nasce e morre certo)     │
+│  → ctx do batch, ctx.Done() na produtora,   │
+│    WaitGroup + fechadora, buffer do results │
+├─────────────────────────────────────────────┤
+│ B) CONTROLE DE TEMPO                        │
+│  (garante que nada trava pra sempre)        │
+│ → context.WithTimeout por operação          │
+├─────────────────────────────────────────────┤
+│ C) RESILIÊNCIA CONTRA O GATEWAY             │
+│ (garante que falha externa não vira caos)   │
+│ → circuit breaker (por fora)                │
+│ → retry + backoff (por dentro)              │
+└─────────────────────────────────────────────┘
+
+
 Projeto de estudo em Go puro (sem dependências externas) que simula um
 checkout contra um gateway de pagamento instável, combinando os tópicos
 mais cobrados em entrevista de backend sênior para fintech/payments:

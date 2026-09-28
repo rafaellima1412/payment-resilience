@@ -21,9 +21,9 @@ var ErrGatewayIndisponivel = errors.New("gateway indisponivel (503)")
 var ErrTimeout = errors.New("timeout no gateway")
 
 type Pagamento struct {
-	ID              string
-	IdempotencyKey  string
-	ValorCentavos   int64
+	ID             string
+	IdempotencyKey string // in-memory deduplication key (ex: hash do payload)
+	ValorCentavos  int64
 }
 
 type Resultado struct {
@@ -53,7 +53,7 @@ type FlakyGateway struct {
 func NewFlakyGateway(limiteRuim int) *FlakyGateway {
 	g := &FlakyGateway{
 		limiteRuim: limiteRuim,
-		mu:         make(chan struct{}, 1),
+		mu:         make(chan struct{}, 1), // mutex leve via channel de 1 slot
 	}
 	g.mu <- struct{}{}
 	return g
