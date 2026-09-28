@@ -68,6 +68,6 @@ func backoffComJitter(tentativa int, base, max time.Duration) time.Duration {
 	}
 	// jitter "full": aleatoriza entre 0 e o valor exponencial,
 	// evita que várias goroutines re-tentem todas no mesmo instante (thundering herd)
-	jitter := rand.Float64() * exp
+	jitter := rand.Float64() * exp // adiciona jitter aleatório
 	return time.Duration(jitter)
 }
